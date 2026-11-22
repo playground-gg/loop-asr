@@ -1,0 +1,33 @@
+# Arm A_best: arm A rerun at FULL steps with the winning LR of the half-step sweep
+# (DECISIONS.md 2026-11-23 b). The go test's H1 compares B against this run (plan.md section 7).
+# PLACEHOLDER: lr_peak stays null until the sweep has run; set it and record the sweep
+# results in experiments/ before launching. Everything else must stay identical to arm_a.yaml.
+name: arm_a_best
+arm: A_best
+target_params: 3.5e6  # [E] in plan.md section 3; tests/test_smoke.py checks +-10%
+
+model:
+  kind: plain
+  n_mels: 80
+  d_model: 256
+  n_heads: 4
+  d_ff: 1024
+  dropout: 0.1
+  conv_channels: 64
+  vocab_size: 256   # sentencepiece BPE; CTC blank is index 256
+  n_blocks: 4
+
+train:  # identical across arms (plan.md section 4)
+  data: librispeech/train-clean-100
+  epochs: 15            # pilot; full run 50
+  optimizer: adamw
+  lr_peak: null        # TBD: the sweep winner
+  warmup_steps: 1000
+  schedule: cosine
+  seed: 0
+  spec_augment: light
+  lr_from_sweep: configs/arm_a.yaml   # winner of train.lr_sweep there
+
+eval:
+  splits: [dev-clean, dev-other]   # pilot: dev WER only; test-* and int8 once, only after a go (DECISIONS.md 2026-11-23 c)
+  decode: ctc_greedy

@@ -1,0 +1,35 @@
+# Arm A: 4 plain blocks, the matched-PARAMETER control for B (plan.md section 3).
+# PLACEHOLDER: shapes and param target from docs/plan.md; training values are the plan's
+# defaults and get fixed (and written down) after the step-0 calibration, before any run.
+name: arm_a
+arm: A
+target_params: 3.5e6  # [E] in plan.md section 3; tests/test_smoke.py checks +-10%
+
+model:
+  kind: plain
+  n_mels: 80
+  d_model: 256
+  n_heads: 4
+  d_ff: 1024
+  dropout: 0.1
+  conv_channels: 64
+  vocab_size: 256   # sentencepiece BPE; CTC blank is index 256
+  n_blocks: 4
+
+train:  # identical across arms (plan.md section 4)
+  data: librispeech/train-clean-100
+  epochs: 15            # pilot; full run 50
+  optimizer: adamw
+  lr_peak: 7.0e-4
+  warmup_steps: 1000
+  schedule: cosine
+  seed: 0
+  spec_augment: light
+  # LR sweep (plan.md section 4, DECISIONS.md 2026-11-23 b): one run per value at HALF the
+  # steps; the winner is rerun at full steps as configs/arm_a_best.yaml before the go test.
+  lr_sweep: [3.0e-4, 7.0e-4, 1.5e-3]
+  lr_sweep_steps_fraction: 0.5
+
+eval:
+  splits: [dev-clean, dev-other]   # pilot: dev WER only; test-* and int8 once, only after a go (DECISIONS.md 2026-11-23 c)
+  decode: ctc_greedy

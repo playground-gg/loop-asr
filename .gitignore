@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Data, features, checkpoints, logs: never committed (results/ holds compact summaries only)
+data/
+checkpoints/
+logs/
+*.pt
+*.ckpt
+*.safetensors
+
+# Secrets
+.env
+.env.*
+
+# macOS
+.DS_Store
+
+# kit state (personal, per machine)
+.kit/evidence/
+.kit/overnight/
+.kit/lead/
+.kit/agent-memory/
+.claude/kit.local.json
+CLAUDE.local.md

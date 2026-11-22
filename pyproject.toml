@@ -1,0 +1,48 @@
+[project]
+name = "loop-asr"
+version = "0.1.0"
+description = "Tiny English CTC speech-to-text on a Mac: do Inkling-style looped shared blocks beat plain ones at the same size or the same compute?"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "torch>=2.9",
+    "soundfile>=0.13",
+    "sentencepiece>=0.2",
+    "jiwer>=4.0",
+    "pyyaml>=6.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.14",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/loop_asr"]
+
+# macOS arm64 gets torch from PyPI (MPS build); Linux (CI) gets the CPU-only wheel,
+# which is a fraction of the size of the default CUDA one.
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "C4", "PT", "RUF"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
