@@ -18,7 +18,9 @@ tight, more loops when accuracy matters. You ship one set of weights, under 5 MB
    B is much better than B_fix away from k=6, and at most 5% worse at k=6.
 3. **Is the loop a better speed dial than early exits?** We compare B with a plain model 3.2×
    larger (C, 14 blocks) that exits at the same FLOPs, and measure the time on the Mac's CPU,
-   not only the FLOPs. Prediction: B is roughly tied with C at the same compute. Whether B ties
+   not only the FLOPs. Prediction: B is roughly tied with C in WER at the same FLOPs, and about
+   4% slower on CPU (1.00–1.10×): its gates are small ops that cost more than their FLOPs at
+   batch 1. The go criterion allows up to 1.10×. Whether B ties
    or loses to C is the question that matters most.
 
 ## Why it matters for tiny on-device STT

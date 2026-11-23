@@ -77,8 +77,10 @@ Read in transformers v5.24.0, `modeling_inkling2_loop.py` [V]:
 - Geiping 2025 [V-s]: step conditioning hurts extrapolation to more loops. A run can "learn
   early to ignore the incoming state".
 - Early exits without sharing: InterCTC (2102.03216). Wright et al. (2309.09546): a 31M
-  conformer on 960h, test-other 43.8 / 25.7 / 18.1 / 15.1 at exits 2/4/6/12, and joint exit
-  training beats single-exit models. **A plain model with exits is the fair speed control.**
+  conformer on 960h, test-other 43.8 / 25.7 / 18.1 / 15.1 at exits 2/4/6/12. Joint exit
+  training from scratch improves the final and middle exits over single-exit models
+  (6.5 / 17.7 → 5.1 / 15.1) but is worse at the shallow CTC exits 2 and 4. It is the main
+  support for training C on its exits; InterCTC is weaker support. **A plain model with exits is the fair speed control.**
 
 ## 5. Where a 3.5M Transformer-CTC on 100h should land
 
@@ -97,7 +99,7 @@ works. The per-arm numbers and 80% ranges are in `experiments/pilot/README.md`.
 | K weights 1:2:6:2:1 have mean 6, but C was matched to K=8 | C at B's mean K: 14 blocks | DECISIONS 4 |
 | Inkling-faithful gates (+0.5M, +15%) break the size match | the concern does not apply to our code (one gate at +16.9k). Now one gate per core layer, rank 32: +33.8k, +0.95%, tested ≤ +3% | DECISIONS 2 |
 | only A gets an LR sweep | the same 3-LR half-step sweep for A, B and C | DECISIONS 3 |
-| go criterion near-impossible (P ≈ 0.15–0.2) | re-derived, P ≈ 0.3 | DECISIONS 6 |
+| go criterion near-impossible (P ≈ 0.15–0.2) | re-derived, latency bar 1.10, P ≈ 0.25 | DECISIONS 6 |
 | FLOPs on MPS count attention as 0 | `loop_asr.forward_flops` counts on a CPU copy | DECISIONS 8 |
 
 Left open on purpose (plan.md §9): stronger SpecAugment, an Inkling-form tanh gate, a LARM-style

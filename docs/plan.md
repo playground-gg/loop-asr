@@ -17,7 +17,7 @@ Tags: **[V]** verified in a primary source; **[M]** measured in this repo; **[E]
 - **Pilot:** A, B, C each get a 3-LR sweep at half steps. Each winner is rerun at full steps,
   and B_fix runs at B's LR. Dev only, 15 epochs. **25 h of Mac time in total** (§6).
 - **Go** (§7): B(6) ≤ 0.80 × A_best, B(4) is usable, and B(4)/B(6) are within 10% of C's
-  equal-FLOP exits at no extra CPU latency. Prior P(go) ≈ 0.3 [E].
+  equal-FLOP exits at no more than 10% extra CPU latency. Prior P(go) ≈ 0.25 [E].
 - **Output:** a blog post plus an HF release. A workshop paper is stage 2, only after a go (§8).
 
 ---
@@ -83,9 +83,12 @@ subsampling (64 ch, 25 frames/s), final LayerNorm + linear CTC head, BPE-256, gr
 equal-FLOP comparison points. An exit stops the forward pass there (`depth=`), so an exit's
 measured latency is what a deployed early-exit model would pay. Training C on its exits is the
 one deliberate break of "arms differ only in the encoder". Each any-depth model gets its
-native any-depth training: sampled K for B, joint exits for C (joint beats single-exit,
-Wright 2309.09546). It probably makes C stronger at full depth too (InterCTC: 9.2 → 7.8 in
-Komatsu), which makes a B win more meaningful.
+native any-depth training: sampled K for B, joint exits for C. The main support is Wright
+2309.09546: joint exit training from scratch improves the final and middle exits over
+single-exit models (6.5 / 17.7 → 5.1 / 15.1), but is worse at the shallow CTC exits 2 and 4.
+So C should be strong at the exits the go criterion uses (blocks 10 and 14) and may be weaker
+at block 6. InterCTC (9.2 → 7.8 in Komatsu) is an intermediate-loss result and only weaker
+support. A stronger C makes a B win more meaningful.
 
 **Compute, counted on CPU** (`loop_asr.forward_flops`, one 15 s utterance, forward
 matmul/conv FLOPs) [M]:
@@ -97,9 +100,9 @@ matmul/conv FLOPs) [M]:
 | B(8) | 14.18 | 1.280 | B(6) | 11.20 | 1.011 (C@14) |
 | B(10) | 17.15 | 1.548 | B(16) | 26.08 | 2.354 |
 
-- **Training-compute ratio** (forward FLOPs per step, expected over K): B : C = 1.011, A : C =
-  0.340, B_fix : C = 1.011. C's two extra exit heads add ~1%, so B and C train at about the
-  same compute. A trains on a third of it, which is the A-long caveat in §4.
+- **Training-compute ratio** (forward FLOPs per step, expected over K): B : C = 1.011 against
+  C without its exit heads, **1.002 with them**, as C actually trains (the two extra exit heads
+  add ~0.9%). A : C = 0.340, B_fix : C = 1.011 (1.002). So B and C train at the same compute. A trains on a third of it, which is the A-long caveat in §4.
 - **Inference-compute ratio:** B(k) : C@(2+2k) = 1.005–1.011 at k = 2, 4, 6, the gates being
   the only extra matmuls. B(6) : C (full) = 1.011. B(4) : C (full) = 0.743, so 1.35× fewer FLOPs.
 
@@ -204,7 +207,7 @@ Measured on dev-clean and dev-other, greedy CTC, after runs 4–6. CPU latency i
 > **GO** if all three hold:
 > 1. **Size (primary):** WER(B(6)) ≤ 0.80 × WER(A_best) on dev-clean **and** ≤ 0.85 × WER(A_best) on dev-other.
 > 2. **Any k:** on dev-clean, WER(B(4)) ≤ 0.85 × WER(A_best) **and** WER(B(4)) ≤ 1.15 × WER(B(6)).
-> 3. **Equal compute:** for both k = 4 and k = 6, on dev-clean, WER(B(k)) ≤ 1.10 × WER(C@(2+2k)) (C@10, C@14), **and** B(k)'s measured CPU latency ≤ 1.05 × C@(2+2k)'s.
+> 3. **Equal compute:** for both k = 4 and k = 6, on dev-clean, WER(B(k)) ≤ 1.10 × WER(C@(2+2k)) (C@10, C@14), **and** B(k)'s measured CPU latency ≤ 1.10 × C@(2+2k)'s.
 
 **Sanity check (not a no-go; failing it means a bug to fix and rerun):** A_best < 45 and
 B(6) < 35 on dev-clean, and H6's gate ratio > 0.05 in at least one core layer at the end of
@@ -216,8 +219,14 @@ training.
 |---|---|---|
 | 1 | 19.5/30 = 0.65 (clean), 43/55 = 0.78 (other) | 0.8 |
 | 2 | 21/30 = 0.70, 21/19.5 = 1.08 | 0.75 given 1 |
-| 3 | 21/21 = 1.00 (k=4), 19.5/18 = 1.08 (k=6), latency ≈ 1.0 | 0.5 given 1–2 |
-| **go** | | **≈ 0.3** |
+| 3, WER | 21/21 = 1.00 (k=4), 19.5/18 = 1.08 (k=6), bar 1.10 | 0.5 given 1–2 (k=6 is a coin flip; k=4 nearly sure once k=6 passes) |
+| 3, latency | 1.04 (1.00–1.10) at k = 4 and 6, bar 1.10 | 0.85 (≈ 0.5 at a 1.05 bar) |
+| **go** | 0.8 × 0.75 × 0.5 × 0.85 | **≈ 0.25** (0.2–0.3; ≈ 0.15 at a 1.05 latency bar) |
+
+The factors are correlated (a strong B helps 1, 2 and 3 together), so the product is a rough
+estimate. Latency is predicted above 1.0 because B runs one gate (a rank-32 projection pair
+and a multiply) per core layer per pass: at batch 1 each small op pays a fixed per-op cost
+larger than its FLOPs, on top of B's +0.5–1.1% FLOPs.
 
 **Why these thresholds.** Plan v1's speed test needed B(k) to match full-depth C within 5%
 while being 1.5× faster on CPU. Only k ≤ 4 could pass that, at 56% of C's depth, which gave
@@ -228,8 +237,12 @@ P ≈ 0.15–0.2. That test also compared looping with "no exits", not with exit
   mass (2/12).
 - Criterion 3 asks the real question: at the same FLOPs and the same wall-clock, does a 3.6M
   looped model come within 10% of a 3.2× larger plain model with exits? A tie is the claim,
-  and a 10% margin is about the one-seed noise at this WER plus C's size advantage.
-- Overall, a go stays a real result while not being near-impossible.
+  and a 10% margin is about the one-seed noise at this WER plus C's size advantage. The
+  latency bar is 10% too (1.05 in the first v2 draft): the gates' per-op overhead at batch 1
+  is expected to cost a few percent, and a 5% bar would fail B on that overhead rather than
+  on the idea.
+- Overall, a go stays a real result while not being near-impossible: P ≈ 0.25 against
+  0.15–0.2 for v1. It is still less likely than not.
 
 **Outcomes:**
 - **Go (1 ∧ 2 ∧ 3):** write the blog post and HF release, and propose stage 2 (§8) to the owner.
@@ -249,6 +262,8 @@ the go.
   package.
   - 50 epochs, 3 seeds, test-clean/test-other once.
   - Per-k specialists at k = 2, 4 (B_fix at K=6 already exists) and A-long.
+  - C without exit heads (final-layer CTC only), to measure what joint exit training does to
+    C at full depth.
   - A LARM-style carry-state arm (B2: state carried, input injection, intermediate CTC).
   - The Inkling-form tanh gate as an ablation, plus a closed vs open gate init.
   - ESPnet-strength SpecAugment in all arms.

@@ -45,9 +45,12 @@ reasoning. All [E].
   Inkling's 1-pass collapse). k=1 is out of distribution.
 - **C:** 14 blocks rather than the research's 18 (≈ +3%), offset by the exit loss (InterCTC
   −5 to −15%), so 18 is kept. The exits are scaled from LARM T4 and Wright 2309.09546.
-- **B_fix:** at its own K it is the specialist, so slightly better than B(6). Away from K=6
-  it degrades as in Komatsu ("decode repeats ≠ train repeats is worse") and in LARM's
-  K=24 exit-4 result. It has no intermediate loss, so it degrades faster than LARM's exits.
+- **B_fix:** at its own K it is the specialist, so slightly better than B(6). Above K=6
+  it degrades as in Komatsu §4.3 (decoding with more repeats than in training is worse) and
+  in LARM's K=24 exit-4 result. Komatsu does not test fewer repeats than in training, so the
+  B_fix drop at k=2 and k=4 is **our own estimate** [E]: with no intermediate loss, the state
+  after 2 or 4 passes was never trained to be read. For the same reason it degrades faster
+  than LARM's exits.
 
 **Go-criterion read-outs (plan.md §7):**
 
@@ -55,9 +58,14 @@ reasoning. All [E].
 |---|---|---|---|
 | 1. B(6)/A_best | 0.65 clean, 0.78 other | ≤ 0.80, ≤ 0.85 | 0.8 |
 | 2. B(4)/A_best; B(4)/B(6) | 0.70; 1.08 | ≤ 0.85; ≤ 1.15 | 0.75 given 1 |
-| 3. B(4)/C@10; B(6)/C@14 (WER) | 1.00; 1.08 | ≤ 1.10 each | 0.5 given 1–2 |
-| 3. CPU latency, B(k)/C@(2+2k) | 0.97 (0.85–1.10) | ≤ 1.05 | (included above) |
-| **go** | | | **≈ 0.3** |
+| 3. B(4)/C@10; B(6)/C@14 (WER) | 1.00; 1.08 | ≤ 1.10 each | 0.5 given 1–2 (k=6 a coin flip) |
+| 3. CPU latency, B(k)/C@(2+2k) | 1.04 (1.00–1.10) | ≤ 1.10 | 0.85 |
+| **go** | 0.8 × 0.75 × 0.5 × 0.85 | | **≈ 0.25** (0.2–0.3) |
+
+Latency is predicted above 1.0: B runs one gate per core layer per pass, small ops whose fixed
+per-op cost at batch 1 outweighs their FLOPs, on top of B's +0.5–1.1% FLOPs. The factors are
+correlated, so the product is rough. At the first draft's 1.05 latency bar, P(latency) ≈ 0.5
+and P(go) ≈ 0.15.
 
 **Other predictions:**
 - **H4:** B(4)/B_fix(4) = 0.84 and B(8)/B_fix(8) = 0.86, both ≤ 0.90. B(6)/B_fix(6) = 1.03,
@@ -83,7 +91,8 @@ reasoning. All [E].
   opens.
 - The gate ratio stays near 0 while B still beats A. Under the restart rule that is
   impossible, so it means a bug.
-- B(k)'s CPU latency > 1.10 × C@(2+2k). Weight reuse would then cost wall-clock time.
+- B(k)'s CPU latency > 1.15 × C@(2+2k). Weight reuse or the gates would then cost far more
+  wall-clock time than their FLOPs.
 
 ## Setup
 

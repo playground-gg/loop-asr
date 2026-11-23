@@ -10,7 +10,7 @@ file go by PR, with an entry in `DECISIONS.md`.
 better by looping its middle blocks? The basic claim is already published. Komatsu 2022
 (arXiv 2202.08474) ran a fully shared 6.8M conformer-CTC on 100h, with the repeat count set at
 decoding: 9.5 / 25.6. LARM 2026 (arXiv 2606.04678) showed a looped 7.7M Transformer beating a
-plain model with the same FLOPs on 100h (11.34 vs 12.24), though not on 960h. What is still
+plain model with the same number of block applications on 100h (11.34 vs 12.24), though not on 960h. What is still
 open is narrower and practical (`idea.md`, `research.md` §2):
 
 **Claim to test.** One tiny looped model (~3.5M), trained once with the loop count K sampled

@@ -58,8 +58,8 @@ at K=8" part of (a).
   - Skewed weights on {2,…,10} (e.g. 1:1:2:6:2) reach a mean of only 7.2.
   - Keeping the weights also keeps Inkling's schedule and decision (a)'s K set.
 - Ratios, counted on CPU (`forward_flops`, 15 s utterance) [M]:
-  - **Training compute** (forward FLOPs per step, expected over K): B : C = **1.011**, A : C =
-    0.340.
+  - **Training compute** (forward FLOPs per step, expected over K): B : C = **1.011** without
+    C's exit heads, **1.002** with them (as C actually trains). A : C = 0.340.
   - **Inference compute:** B(k) : C@(2+2k) = **1.005 / 1.009 / 1.011** at k = 2 / 4 / 6.
     B(6) : C = 1.011, B(4) : C = 0.743, B(8) : C = 1.280, B(10) : C = 1.548.
 
@@ -79,10 +79,14 @@ utterances:
 > **GO** if all three hold:
 > 1. **Size (primary):** WER(B(6)) ≤ 0.80 × WER(A_best) on dev-clean **and** ≤ 0.85 × WER(A_best) on dev-other.
 > 2. **Any k:** on dev-clean, WER(B(4)) ≤ 0.85 × WER(A_best) **and** WER(B(4)) ≤ 1.15 × WER(B(6)).
-> 3. **Equal compute:** for both k = 4 and k = 6, on dev-clean, WER(B(k)) ≤ 1.10 × WER(C@(2+2k)) (C@10, C@14), **and** B(k)'s measured CPU latency ≤ 1.05 × C@(2+2k)'s.
+> 3. **Equal compute:** for both k = 4 and k = 6, on dev-clean, WER(B(k)) ≤ 1.10 × WER(C@(2+2k)) (C@10, C@14), **and** B(k)'s measured CPU latency ≤ 1.10 × C@(2+2k)'s.
 
-- Re-derived from the research's predictions (plan.md §7): P(go) ≈ 0.3, against ≈ 0.15–0.2
-  for v1.
+- Latency bar raised from 1.05 to 1.10 after review (2026-11-23): B's gate ops at batch 1 plus
+  its +1% FLOPs are predicted to cost ~4% (1.00–1.10), so a 1.05 bar would test op overhead,
+  not the idea.
+- Re-derived from the research's predictions (plan.md §7): P(go) ≈ 0.25 (0.2–0.3) = 0.8 (1)
+  × 0.75 (2 given 1) × 0.5 (3 WER, k=6 at 1.08 against 1.10) × 0.85 (3 latency), against
+  ≈ 0.15–0.2 for v1. With the 1.05 latency bar it would have been ≈ 0.15.
 - "B clearly beats size-matched A" stays the primary claim.
 
 **7. Predictions.** *Lead default, owner can overturn.*

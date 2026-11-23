@@ -42,9 +42,9 @@ steps (`*_best.yaml`).
 1. **Size (primary):** WER(B(6)) <= 0.80 x WER(A_best) on dev-clean and <= 0.85 x on dev-other.
 2. **Any k:** on dev-clean, WER(B(4)) <= 0.85 x WER(A_best) and <= 1.15 x WER(B(6)).
 3. **Equal compute:** for k = 4 and k = 6, on dev-clean, WER(B(k)) <= 1.10 x WER(C@(2+2k)),
-   and B(k)'s measured CPU latency <= 1.05 x C@(2+2k)'s.
+   and B(k)'s measured CPU latency <= 1.10 x C@(2+2k)'s.
 
-Prior P(go) about 0.3. The pilot costs about 25 h of Mac time (docs/plan.md section 6).
+Prior P(go) about 0.25. The pilot costs about 25 h of Mac time (docs/plan.md section 6).
 
 ## Out of scope
 
