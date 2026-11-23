@@ -1,9 +1,11 @@
-# Arm C: 18 plain blocks, the matched-FLOP control for B at K=8.
+# Arm C: 14 plain blocks, the matched-FLOP control for B at k=6 (B's mean training K), with CTC
+# exits at blocks 6/10/14 = the depths of B at k=2/4/6 (DECISIONS.md decisions 4 and 5).
+# Training loss: mean of the CTC losses at the exits, one shared final norm + head.
 # PLACEHOLDER: shapes and param target from docs/plan.md; training values are the plan's
 # defaults and get fixed (and written down) after the step-0 calibration, before any run.
 name: arm_c
 arm: C
-target_params: 14.5e6  # [E] in plan.md section 3; tests/test_smoke.py checks +-10%
+target_params: 11.47e6  # counted: 11,472,321; tests/test_smoke.py checks +-10%
 
 model:
   kind: plain
@@ -14,7 +16,8 @@ model:
   dropout: 0.1
   conv_channels: 64
   vocab_size: 256   # sentencepiece BPE; CTC blank is index 256
-  n_blocks: 18
+  n_blocks: 14
+  exit_blocks: [6, 10, 14]   # shared head; eval reads each exit as its own depth
 
 train:  # identical across arms (plan.md section 4)
   data: librispeech/train-clean-100
@@ -25,7 +28,13 @@ train:  # identical across arms (plan.md section 4)
   schedule: cosine
   seed: 0
   spec_augment: light
+  loss: mean_ctc_over_exits
+  # Equal LR sweep for every arm (DECISIONS.md decision 3): one run per value at HALF the
+  # steps; the winner is rerun at full steps as configs/arm_<x>_best.yaml.
+  lr_sweep: [3.0e-4, 7.0e-4, 1.5e-3]
+  lr_sweep_steps_fraction: 0.5
 
 eval:
   splits: [dev-clean, dev-other]   # pilot: dev WER only; test-* and int8 once, only after a go (DECISIONS.md 2026-11-23 c)
   decode: ctc_greedy
+  depths: [6, 10, 14]

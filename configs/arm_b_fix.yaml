@@ -1,0 +1,40 @@
+# Arm B_fix: arm B's encoder trained at a FIXED K=6 (no sampling): the Komatsu/LARM-style
+# baseline for the "train once, run at any k" claim (DECISIONS.md decision 1). Read at every k
+# like B. Also the per-k specialist at k=6. No LR sweep: it uses B's winning LR (same encoder).
+# PLACEHOLDER: lr_peak stays null until B's sweep has run.
+name: arm_b_fix
+arm: B_fix
+target_params: 3.61e6  # counted: 3,608,513 = A + 33,792 gate params (+0.95%)
+
+model:
+  kind: looped
+  n_mels: 80
+  d_model: 256
+  n_heads: 4
+  d_ff: 1024
+  dropout: 0.1
+  conv_channels: 64
+  vocab_size: 256   # sentencepiece BPE; CTC blank is index 256
+  n_prelude: 1
+  n_core: 2         # shared, run K times
+  n_coda: 1
+  gate_rank: 32     # one low-rank message gate per core layer, up-projection zero-init (closed)
+  default_loops: 6  # the fixed training K
+
+train:  # identical across arms (plan.md section 4)
+  data: librispeech/train-clean-100
+  epochs: 15            # pilot; full run 50
+  optimizer: adamw
+  lr_peak: null        # TBD: B's sweep winner
+  warmup_steps: 1000
+  schedule: cosine
+  seed: 0
+  spec_augment: light
+  loops_sample: [6]   # fixed K: the only difference from arm B
+  loops_weights: [1]
+  lr_from_sweep: configs/arm_b.yaml   # B's winner
+
+eval:
+  splits: [dev-clean, dev-other]   # pilot: dev WER only; test-* and int8 once, only after a go (DECISIONS.md 2026-11-23 c)
+  decode: ctc_greedy
+  loops: [1, 2, 4, 6, 8, 10, 12, 14, 16]   # 12-16: extrapolation past K_max

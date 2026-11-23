@@ -6,7 +6,7 @@ One folder per run: `experiments/<id>/README.md` (ids like `p0-calibration`, `p1
 
 The README is written and **committed before the run starts**, with:
 
-1. **Goal** - the hypothesis it tests (H1-H5 in `docs/plan.md` section 1).
+1. **Goal** - the hypothesis it tests (H1-H6 in `docs/plan.md` section 1).
 2. **Predictions** - the number you expect (e.g. "dev-clean WER 18-24"), and what would count
    as wrong. Corrections are allowed only before the run; after it, the prediction stays as it
    was and the outcome is written next to it.

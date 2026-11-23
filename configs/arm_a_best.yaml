@@ -1,10 +1,10 @@
 # Arm A_best: arm A rerun at FULL steps with the winning LR of the half-step sweep
-# (DECISIONS.md 2026-11-23 b). The go test's H1 compares B against this run (plan.md section 7).
+# (DECISIONS.md 2026-11-23 b and decision 3). The go criterion compares B_best against it.
 # PLACEHOLDER: lr_peak stays null until the sweep has run; set it and record the sweep
 # results in experiments/ before launching. Everything else must stay identical to arm_a.yaml.
 name: arm_a_best
 arm: A_best
-target_params: 3.5e6  # [E] in plan.md section 3; tests/test_smoke.py checks +-10%
+target_params: 3.57e6  # counted: 3,574,721; tests/test_smoke.py checks +-10%
 
 model:
   kind: plain
