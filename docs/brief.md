@@ -1,23 +1,47 @@
 status: project playground-gg/loop-asr
 
-# Tiny STT: un voice-to-text minuscolo con il loop di Inkling
+# Brief: a tiny looped STT model you can run at any depth
 
-**Problema.** Si può avere un modello di trascrizione da pochi milioni di parametri che si avvicina a uno molto più grande? Inkling 2 Mini (Thinking Machines, 2026-11-20) ripete i blocchi centrali con pesi condivisi. LARM (arXiv 2606.04678) mostra che su ASR un encoder da 7.7M con loop arriva vicino a un 85.7M a pari FLOP.
+v2, 2026-11-23. Rewritten on top of the frontier research (`research.md`, `research/`). The
+first version of this brief, in Italian, is in git history (commit fe708ca). Changes to this
+file go by PR, with an entry in `DECISIONS.md`.
 
-**Utente.** Il proprietario: un esperimento onesto e riproducibile sul suo Mac, nello stile di wsp-adaptive-decision-models (previsioni scritte prima di ogni run, controlli appaiati).
+**Problem.** Can a speech-to-text model of a few million parameters use its compute
+better by looping its middle blocks? The basic claim is already published. Komatsu 2022
+(arXiv 2202.08474) ran a fully shared 6.8M conformer-CTC on 100h, with the repeat count set at
+decoding: 9.5 / 25.6. LARM 2026 (arXiv 2606.04678) showed a looped 7.7M Transformer beating a
+plain model with the same FLOPs on 100h (11.34 vs 12.24), though not on 960h. What is still
+open is narrower and practical (`idea.md`, `research.md` §2):
 
-**Prima versione.**
-- Inglese, frasi libere, LibriSpeech train-clean-100, solo Mac (24 GB, MPS).
-- Bracci: A, 4 blocchi normali (~3.5M); B, blocchi condivisi in loop con gate che parte chiuso e numero di loop variabile; C, 18 blocchi normali a pari FLOP di B.
-- Misure: WER test-clean/test-other per ogni numero di loop, RTF su CPU e MPS, dimensione fp32/int8. Whisper tiny.en e Moonshine Tiny come riferimento.
-- Pilota di circa un giorno di calcolo con un criterio go/no-go (vedi plan.md).
+**Claim to test.** One tiny looped model (~3.5M), trained once with the loop count K sampled
+(Inkling 2 Mini's 1:2:6:2:1), is usable at any k at inference. It must:
+1. clearly beat a plain model of the same size,
+2. hold up against a fixed-K looped model, the Komatsu/LARM-style baseline,
+3. hold up against a plain model with early exits at equal compute, measured as real CPU
+   wall-clock on a Mac and not only as FLOPs.
 
-**Fuori.** Italiano, cloud GPU, TTS, streaming, app.
+**User.** The owner: an honest, reproducible experiment on the owner's Mac, in the style of
+wsp-adaptive-decision-models (predictions written before every run, matched controls).
 
-**Fatto quando.** Il pilota ha girato e un report dice go o no-go contro il criterio, con i numeri dei tre bracci.
+**First version (the pilot).**
+- English, LibriSpeech train-clean-100, Mac only (Apple M5, 24 GB, MPS), dev sets only.
+- Arms: A (4 plain blocks, ~3.57M), B (looped, prelude 1 + shared core 2 × k + coda 1, one
+  closed gate per core layer, K sampled from {2,4,6,8,10}, ~3.61M), B_fix (B at fixed K=6),
+  C (14 plain blocks, ~11.5M, CTC exits at 6/10/14, the same FLOPs as B at k=2/4/6).
+- The same 3-LR sweep for A, B and C, then each winner rerun at full steps.
+- Measures: dev-clean/dev-other WER at every k or exit, CPU and MPS wall-clock, FLOPs counted
+  on CPU, size. Whisper tiny.en and Moonshine Tiny are measured on the same Mac as references.
+- About 25 h of Mac time, with one go criterion fixed in advance (`plan.md` §7).
 
-**Stack.** Python, PyTorch (MPS), torchaudio o soundfile, sentencepiece (BPE da 256 token), jiwer.
+**Target output.** A blog post plus an HF release: an int8 model under 5 MB, a k-slider, and
+an honest Pareto plot against Whisper tiny.en and Moonshine Tiny. A workshop paper is stage 2,
+only after a go (3 seeds, C with exits, per-k specialists).
 
-**Nomi.** loop-asr (consigliato), tiny-stt, wee-asr: tutti liberi su giovannigiofre.
+**Out.** Italian, cloud GPUs, TTS, streaming, an app. test-clean/test-other and int8 come only
+after a go. No distillation in the pilot.
 
-File: plan.md (piano dell'esperimento), research.md (studio su Inkling 2 Mini).
+**Done when.** The pilot has run, and a report gives go or no-go against `plan.md` §7, with the
+numbers of every arm and the predictions they were written against.
+
+**Stack.** Python 3.12, PyTorch 2.15 (MPS, fp32, eager), soundfile, torchaudio `kaldi.fbank`,
+sentencepiece (BPE 256), jiwer. References: openai-whisper (needs ffmpeg) and moonshine-voice.

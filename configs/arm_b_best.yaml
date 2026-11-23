@@ -1,0 +1,39 @@
+# Arm B_best: arm B rerun at FULL steps with the winning LR of its half-step sweep
+# (DECISIONS.md decision 3). The go criterion reads B from this run.
+# PLACEHOLDER: lr_peak stays null until the sweep has run. Everything else matches arm_b.yaml.
+name: arm_b_best
+arm: B_best
+target_params: 3.61e6  # counted: 3,608,513 = A + 33,792 gate params (+0.95%)
+
+model:
+  kind: looped
+  n_mels: 80
+  d_model: 256
+  n_heads: 4
+  d_ff: 1024
+  dropout: 0.1
+  conv_channels: 64
+  vocab_size: 256   # sentencepiece BPE; CTC blank is index 256
+  n_prelude: 1
+  n_core: 2         # shared, run K times
+  n_coda: 1
+  gate_rank: 32     # one low-rank message gate per core layer, up-projection zero-init (closed)
+  default_loops: 10 # K_max (DECISIONS.md 2026-11-23 a); used when the caller passes no loop count
+
+train:  # identical across arms (plan.md section 4)
+  data: librispeech/train-clean-100
+  epochs: 15            # pilot; full run 50
+  optimizer: adamw
+  lr_peak: null        # TBD: the sweep winner
+  warmup_steps: 1000
+  schedule: cosine
+  seed: 0
+  spec_augment: light
+  loops_sample: [2, 4, 6, 8, 10]   # K sampled per step, K_max=10 (DECISIONS.md 2026-11-23 a)
+  loops_weights: [1, 2, 6, 2, 1]   # mean = mode = 6 -> C has 14 blocks (decision 4)
+  lr_from_sweep: configs/arm_b.yaml   # winner of train.lr_sweep there
+
+eval:
+  splits: [dev-clean, dev-other]   # pilot: dev WER only; test-* and int8 once, only after a go (DECISIONS.md 2026-11-23 c)
+  decode: ctc_greedy
+  loops: [1, 2, 4, 6, 8, 10, 12, 14, 16]   # 12-16: extrapolation past K_max

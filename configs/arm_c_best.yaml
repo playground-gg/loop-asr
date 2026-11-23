@@ -1,0 +1,35 @@
+# Arm C_best: arm C rerun at FULL steps with the winning LR of its half-step sweep
+# (DECISIONS.md decision 3). The go criterion reads C's exits from this run.
+# PLACEHOLDER: lr_peak stays null until the sweep has run. Everything else matches arm_c.yaml.
+name: arm_c_best
+arm: C_best
+target_params: 11.47e6  # counted: 11,472,321; tests/test_smoke.py checks +-10%
+
+model:
+  kind: plain
+  n_mels: 80
+  d_model: 256
+  n_heads: 4
+  d_ff: 1024
+  dropout: 0.1
+  conv_channels: 64
+  vocab_size: 256   # sentencepiece BPE; CTC blank is index 256
+  n_blocks: 14
+  exit_blocks: [6, 10, 14]   # shared head; eval reads each exit as its own depth
+
+train:  # identical across arms (plan.md section 4)
+  data: librispeech/train-clean-100
+  epochs: 15            # pilot; full run 50
+  optimizer: adamw
+  lr_peak: null        # TBD: the sweep winner
+  warmup_steps: 1000
+  schedule: cosine
+  seed: 0
+  spec_augment: light
+  loss: mean_ctc_over_exits
+  lr_from_sweep: configs/arm_c.yaml   # winner of train.lr_sweep there
+
+eval:
+  splits: [dev-clean, dev-other]   # pilot: dev WER only; test-* and int8 once, only after a go (DECISIONS.md 2026-11-23 c)
+  decode: ctc_greedy
+  depths: [6, 10, 14]

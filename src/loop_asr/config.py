@@ -21,11 +21,12 @@ class ModelConfig:
     vocab_size: int = 256  # BPE pieces; CTC blank is an extra index (vocab_size)
     # plain encoder
     n_blocks: int = 4
+    exit_blocks: list[int] = field(default_factory=list)  # CTC exits (arm C), shared head
     # looped encoder: prelude + shared core repeated K times + coda
     n_prelude: int = 1
     n_core: int = 2
     n_coda: int = 1
-    gate_rank: int = 32
+    gate_rank: int = 32  # one gate per core layer (DECISIONS.md decision 2)
     default_loops: int = 10  # K_max, docs/DECISIONS.md 2026-11-23 (a)
 
 
