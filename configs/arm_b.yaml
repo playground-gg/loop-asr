@@ -1,0 +1,39 @@
+# Arm B: Inkling-style prelude 1 + shared core 2 x K + coda 1; blocks run per frame = 2 + 2K
+# (18 at K=8, the point arm C matches; 22 at K_max=10).
+# PLACEHOLDER: shapes and param target from docs/plan.md; training values are the plan's
+# defaults and get fixed (and written down) after the step-0 calibration, before any run.
+name: arm_b
+arm: B
+target_params: 3.5e6  # [E] in plan.md section 3; tests/test_smoke.py checks +-10%
+
+model:
+  kind: looped
+  n_mels: 80
+  d_model: 256
+  n_heads: 4
+  d_ff: 1024
+  dropout: 0.1
+  conv_channels: 64
+  vocab_size: 256   # sentencepiece BPE; CTC blank is index 256
+  n_prelude: 1
+  n_core: 2         # shared, run K times
+  n_coda: 1
+  gate_rank: 32     # low-rank message gate, up-projection zero-init (closed)
+  default_loops: 10 # K_max (DECISIONS.md 2026-11-23 a); used when the caller passes no loop count
+
+train:  # identical across arms (plan.md section 4)
+  data: librispeech/train-clean-100
+  epochs: 15            # pilot; full run 50
+  optimizer: adamw
+  lr_peak: 7.0e-4
+  warmup_steps: 1000
+  schedule: cosine
+  seed: 0
+  spec_augment: light
+  loops_sample: [2, 4, 6, 8, 10]   # K sampled per step, K_max=10 (DECISIONS.md 2026-11-23 a)
+  loops_weights: [1, 2, 6, 2, 1]
+
+eval:
+  splits: [dev-clean, dev-other]   # pilot: dev WER only; test-* and int8 once, only after a go (DECISIONS.md 2026-11-23 c)
+  decode: ctc_greedy
+  loops: [1, 2, 4, 6, 8, 10]
